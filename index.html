@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日の花おみくじ | pretty flower</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  background: #f8f7f4; color: #2c2c2a;
+  min-height: 100vh; display: flex;
+  align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem 4rem;
+}
+.container { max-width: 400px; width: 100%; }
+.header { text-align: center; margin-bottom: 1.5rem; }
+.shop-name { font-size: 10px; letter-spacing: .2em; color: #888780; text-transform: uppercase; margin-bottom: 8px; }
+h1 { font-size: 22px; font-weight: 400; color: #2c2c2a; margin-bottom: 4px; }
+.date-str { font-size: 12px; color: #888780; }
+.sekki-bar {
+  background: #fff; border: 0.5px solid #d3d1c7;
+  border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;
+}
+.sekki-icon { font-size: 22px; flex-shrink: 0; }
+.sekki-name { font-size: 14px; font-weight: 500; color: #2c2c2a; }
+.sekki-flowers { font-size: 11px; color: #888780; margin-top: 2px; }
+.flower-stage {
+  width: 160px; height: 160px; margin: 0 auto 1rem;
+  cursor: pointer; position: relative;
+}
+.flower-stage svg { width: 100%; height: 100%; overflow: visible; }
+@keyframes idleFloat {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+}
+@keyframes bloom {
+  0%  { transform: scale(0.5) rotate(-15deg); opacity:0.3; }
+  65% { transform: scale(1.12) rotate(6deg); opacity:1; }
+  100%{ transform: scale(1) rotate(0deg); opacity:1; }
+}
+.flower-stage.idle svg { animation: idleFloat 3s ease-in-out infinite; }
+.flower-stage.blooming svg { animation: bloom 0.75s cubic-bezier(.22,1,.36,1) forwards; }
+.hint { text-align: center; font-size: 12px; color: #888780; margin-bottom: 1.5rem; }
+.result { display: none; }
+.result.show { display: block; animation: fadeUp .5s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.25rem; margin-bottom: 10px; }
+.flower-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.flower-svg-small { width: 44px; height: 44px; flex-shrink: 0; }
+.flower-ja { font-size: 18px; font-weight: 500; color: #2c2c2a; }
+.flower-en { font-size: 11px; color: #888780; }
+.luck-badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 14px; border-radius: 20px; margin-bottom: 10px; }
+.daikichi{background:#EAF3DE;color:#3B6D11}
+.kichi{background:#E1F5EE;color:#0F6E56}
+.chukichi{background:#E6F1FB;color:#185FA5}
+.shokichi{background:#FAEEDA;color:#854F0B}
+.suekichi{background:#EEEDFE;color:#534AB7}
+.msg { font-size: 13px; color: #5f5e5a; line-height: 1.85; margin-bottom: 1rem; }
+.advice-box { background: #f8f7f4; border-radius: 8px; padding: 10px 12px; }
+.advice-label { font-size: 10px; letter-spacing: .08em; color: #888780; margin-bottom: 4px; }
+.advice-text { font-size: 13px; color: #2c2c2a; line-height: 1.75; }
+.gift-card { background: #fffdf7; border: 1px solid #c8dba0; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 10px; text-align: center; }
+.gift-title { font-size: 13px; font-weight: 500; color: #3B6D11; margin-bottom: 4px; }
+.gift-body { font-size: 12px; color: #5f5e5a; line-height: 1.75; }
+.pretty-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 10px; }
+.pretty-title { font-size: 12px; font-weight: 500; color: #2c2c2a; margin-bottom: 4px; }
+.pretty-body { font-size: 12px; color: #5f5e5a; line-height: 1.75; margin-bottom: 8px; }
+.pretty-link { font-size: 11px; color: #5f5e5a; border-bottom: 0.5px solid #b4b2a9; text-decoration: none; }
+.pretty-link:hover { color: #2c2c2a; }
+.btn-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.5rem; }
+button { font-size: 13px; padding: 9px 18px; border: 0.5px solid #b4b2a9; background: transparent; border-radius: 8px; cursor: pointer; color: #2c2c2a; font-family: inherit; transition: background .15s; }
+button:hover { background: #f1efe8; }
+.footer { text-align: center; font-size: 10px; color: #b4b2a9; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <p class="shop-name">pretty flower</p>
+    <h1>今日の花おみくじ</h1>
+    <p class="date-str" id="dateStr"></p>
+  </div>
+  <div class="sekki-bar">
+    <div class="sekki-icon" id="sekkiIcon"></div>
+    <div>
+      <div class="sekki-name" id="sekkiName"></div>
+      <div class="sekki-flowers" id="sekkiFlowers"></div>
+    </div>
+  </div>
+  <div class="flower-stage idle" id="flowerStage" onclick="draw()">
+    <svg id="mainSvg" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+      <g id="flowerG"></g>
+    </svg>
+  </div>
+  <p class="hint" id="hint">タップして今日の花を引く</p>
+  <div class="result" id="result">
+    <div class="card">
+      <div class="flower-row">
+        <svg class="flower-svg-small" id="rSvgSmall" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div>
+          <div class="flower-ja" id="rFlower"></div>
+          <div class="flower-en" id="rEn"></div>
+        </div>
+      </div>
+      <span class="luck-badge" id="rBadge"></span>
+      <p class="msg" id="rMsg"></p>
+      <div class="advice-box">
+        <div class="advice-label">🌿 花のある暮らし</div>
+        <div class="advice-text" id="rAdvice"></div>
+      </div>
+    </div>
+    <div id="giftCard" class="gift-card" style="display:none;">
+      <div class="gift-title">🎁 大吉おめでとうございます！</div>
+      <div class="gift-body">pretty flower アトリエショップにて<br>お任せお花 1本プレゼント🌸<br><small style="color:#888780;font-size:11px;">この画面をお店でご提示ください</small></div>
+    </div>
+    <div class="pretty-card">
+      <div class="pretty-title">🌸 pretty flower</div>
+      <div class="pretty-body" id="rPretty"></div>
+      <a class="pretty-link" href="https://pretty-flower.github.io/shop/" target="_blank">アトリエについて →</a>
+    </div>
+    <div class="btn-row">
+      <button onclick="reset()">もう一度引く</button>
+      <button id="copyBtn" onclick="copyResult()">結果をコピー</button>
+    </div>
+  </div>
+  <p class="footer">花のある暮らしを、pretty flower と一緒に。</p>
+</div>
+<script>
+// ========== SVG花描画 ==========
+function flowerSVG(type,cx,cy,r){
+  var h=cx,v=cy,s=r,o='';
+  if(type==='rose'){
+    o+='<ellipse cx="'+h+'" cy="'+(v+s*.2)+'" rx="'+(s*.4)+'" ry="'+(s*.3)+'" fill="#e8a0a8" opacity=".85"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v+s*.05)+'" rx="'+(s*.32)+'" ry="'+(s*.28)+'" fill="#d4707c" opacity=".9"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.08)+'" rx="'+(s*.23)+'" ry="'+(s*.22)+'" fill="#c85068" opacity=".95"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.18)+'" rx="'+(s*.13)+'" ry="'+(s*.13)+'" fill="#e8b8be"/>';
+    o+='<ellipse cx="'+(h-s*.24)+'" cy="'+(v+s*.1)+'" rx="'+(s*.17)+'" ry="'+(s*.27)+'" fill="#e8a0a8" opacity=".8" transform="rotate(-28 '+h+' '+v+')"/>';
+    o+='<ellipse cx="'+(h+s*.24)+'" cy="'+(v+s*.1)+'" rx="'+(s*.17)+'" ry="'+(s*.27)+'" fill="#e8a0a8" opacity=".8" transform="rotate(28 '+h+' '+v+')"/>';
+  } else if(type==='hydrangea'){
+    var pos=[[0,-.3],[.22,-.16],[.28,.08],[.12,.28],[-.12,.28],[-.28,.08],[-.22,-.16],[.1,-.06],[-.1,-.06],[0,.1]];
+    pos.forEach(function(p){
+      var px=h+p[0]*s,py=v+p[1]*s,sr=s*.14;
+      o+='<ellipse cx="'+px+'" cy="'+(py-sr*.7)+'" rx="'+(sr*.55)+'" ry="'+(sr*.75)+'" fill="#9baed4" opacity=".85"/>';
+      o+='<ellipse cx="'+px+'" cy="'+(py-sr*.7)+'" rx="'+(sr*.55)+'" ry="'+(sr*.75)+'" fill="#9baed4" opacity=".85" transform="rotate(90 '+px+' '+py+')"/>';
+      o+='<circle cx="'+px+'" cy="'+py+'" r="'+(sr*.32)+'" fill="#fff" opacity=".9"/>';
+      o+='<circle cx="'+px+'" cy="'+py+'" r="'+(sr*.14)+'" fill="#e8f0f8" opacity=".9"/>';
+    });
+  } else if(type==='scabiosa'){
+    for(var i=0;i<8;i++){var a=i*Math.PI/4,px=h+Math.sin(a)*s*.33,py=v-Math.cos(a)*s*.33;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.1)+'" ry="'+(s*.2)+'" fill="#b8a0d4" opacity=".82" transform="rotate('+(i*45)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.18)+'" fill="#9880c0" opacity=".85"/>';
+    for(var j=0;j<9;j++){var a2=j*Math.PI*2/9;o+='<circle cx="'+(h+Math.cos(a2)*s*.1)+'" cy="'+(v+Math.sin(a2)*s*.1)+'" r="'+(s*.04)+'" fill="#fff" opacity=".75"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.05)+'" fill="#fff" opacity=".95"/>';
+  } else if(type==='ranunculus'){
+    [[s*.38,'#f0c0b0',10],[s*.28,'#e8a090',9],[s*.2,'#e09078',8],[s*.12,'#d87060',7]].forEach(function(l){
+      for(var i=0;i<l[2];i++){var a=i/l[2]*Math.PI*2,px=h+Math.cos(a)*l[0]*.5,py=v+Math.sin(a)*l[0]*.5;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(l[0]*.38)+'" ry="'+(l[0]*.52)+'" fill="'+l[1]+'" opacity=".72" transform="rotate('+(i*(360/l[2]))+' '+h+' '+v+')"/>';}
+    });
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.09)+'" fill="#c05840"/>';
+  } else if(type==='mimosa'){
+    o+='<line x1="'+h+'" y1="'+(v+s*.42)+'" x2="'+h+'" y2="'+(v-s*.32)+'" stroke="#a8a060" stroke-width="'+(s*.045)+'" stroke-linecap="round"/>';
+    [[-1,-.25,-.18,.08],[1,-.25,.18,.08],[0,-.28,0,.08]].forEach(function(b){o+='<line x1="'+h+'" y1="'+(v+b[1]*s)+'" x2="'+(h+b[2]*s)+'" y2="'+(v+b[3]*s)+'" stroke="#b8b070" stroke-width="'+(s*.028)+'" stroke-linecap="round"/>';});
+    var bp=[[-.28,.02],[-.22,-.1],[-.32,-.14],[-.18,.1],[-.26,.16],[.28,.02],[.22,-.1],[.32,-.14],[.18,.1],[.26,.16],[0,.22],[-.06,.08],[.06,.08]];
+    bp.forEach(function(p){o+='<circle cx="'+(h+p[0]*s)+'" cy="'+(v+p[1]*s)+'" r="'+(s*.067)+'" fill="#f0d020" opacity=".95"/><circle cx="'+(h+p[0]*s-s*.02)+'" cy="'+(v+p[1]*s-s*.02)+'" r="'+(s*.032)+'" fill="#f8e060" opacity=".7"/>';});
+  } else if(type==='sunflower'){
+    for(var i=0;i<16;i++){var a=i/16*Math.PI*2,px=h+Math.cos(a)*s*.33,py=v+Math.sin(a)*s*.33;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.09)+'" ry="'+(s*.23)+'" fill="#f0c020" opacity=".9" transform="rotate('+(i*22.5)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.23)+'" fill="#6b3a10"/><circle cx="'+h+'" cy="'+v+'" r="'+(s*.18)+'" fill="#7d4818"/>';
+    for(var j=0;j<20;j++){var a2=j/20*Math.PI*2;o+='<circle cx="'+(h+Math.cos(a2)*s*.12)+'" cy="'+(v+Math.sin(a2)*s*.12)+'" r="'+(s*.028)+'" fill="#f0d050" opacity=".45"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.055)+'" fill="#5a2c08"/>';
+  } else if(type==='cosmos'){
+    for(var i=0;i<8;i++){var a=i/8*Math.PI*2,px=h+Math.cos(a)*s*.3,py=v+Math.sin(a)*s*.3;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.1)+'" ry="'+(s*.26)+'" fill="#e8a0b8" opacity=".85" transform="rotate('+(i*45)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.13)+'" fill="#f8e040"/><circle cx="'+h+'" cy="'+v+'" r="'+(s*.06)+'" fill="#e8b030"/>';
+  } else if(type==='eucalyptus'){
+    o+='<line x1="'+h+'" y1="'+(v+s*.42)+'" x2="'+h+'" y2="'+(v-s*.4)+'" stroke="#7a9a78" stroke-width="'+(s*.042)+'" stroke-linecap="round"/>';
+    [.32,.2,.08,-.04,-.16,-.28,-.38].forEach(function(py,idx){var side=idx%2===0?1:-1,lx=h+side*s*.2,ly=v+py*s;o+='<line x1="'+h+'" y1="'+ly+'" x2="'+lx+'" y2="'+ly+'" stroke="#7a9a78" stroke-width="'+(s*.022)+'" stroke-linecap="round"/><ellipse cx="'+lx+'" cy="'+ly+'" rx="'+(s*.15)+'" ry="'+(s*.1)+'" fill="#8ab890" opacity=".85" transform="rotate('+(side*12)+' '+lx+' '+ly+')"/>';});
+  } else if(type==='lily'){
+    o+='<line x1="'+(h-s*.08)+'" y1="'+(v-s*.4)+'" x2="'+(h+s*.12)+'" y2="'+(v+s*.32)+'" stroke="#90b880" stroke-width="'+(s*.04)+'" stroke-linecap="round"/>';
+    [[.22,-.3,-22],[.27,-.12,-16],[.24,.08,-10],[.17,.26,-5]].forEach(function(b){var bx=h+b[0]*s,by=v+b[1]*s;o+='<ellipse cx="'+bx+'" cy="'+(by+s*.09)+'" rx="'+(s*.1)+'" ry="'+(s*.15)+'" fill="#f8f8f8" opacity=".95" transform="rotate('+b[2]+' '+bx+' '+by+')"/><circle cx="'+bx+'" cy="'+(by+s*.15)+'" r="'+(s*.04)+'" fill="#f0f8e8" opacity=".7"/>';});
+    o+='<ellipse cx="'+(h-s*.15)+'" cy="'+(v+s*.12)+'" rx="'+(s*.1)+'" ry="'+(s*.34)+'" fill="#78b068" opacity=".65" transform="rotate(-18 '+(h-s*.15)+' '+(v+s*.12)+')"/>';
+  } else if(type==='dahlia'){
+    [[s*.44,'#d080a0',14],[s*.32,'#c06090',10],[s*.2,'#b04878',7]].forEach(function(l,li){
+      for(var i=0;i<l[2];i++){var a=i/l[2]*Math.PI*2+li*.2,px=h+Math.cos(a)*l[0]*.5,py=v+Math.sin(a)*l[0]*.5;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(l[0]*.28)+'" ry="'+(l[0]*.52)+'" fill="'+l[1]+'" opacity=".82" transform="rotate('+(i*(360/l[2])+li*15)+' '+h+' '+v+')"/>';}
+    });
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.08)+'" fill="#f8e0f0"/>';
+  } else if(type==='sakura'){
+    // 桜：5枚花びら（先端がハート型にへこんでいる）
+    for(var i=0;i<5;i++){
+      var a=i/5*Math.PI*2-Math.PI/2;
+      var px=h+Math.cos(a)*s*.28,py=v+Math.sin(a)*s*.28;
+      o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.16)+'" ry="'+(s*.22)+'" fill="#f8c8d0" opacity=".9" transform="rotate('+(i*72)+' '+h+' '+v+')"/>';
+    }
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.12)+'" fill="#fff0f4"/>';
+    for(var j=0;j<8;j++){var a2=j/8*Math.PI*2;o+='<line x1="'+h+'" y1="'+v+'" x2="'+(h+Math.cos(a2)*s*.1)+'" y2="'+(v+Math.sin(a2)*s*.1)+'" stroke="#e8a0b0" stroke-width="'+(s*.02)+'" stroke-linecap="round"/><circle cx="'+(h+Math.cos(a2)*s*.1)+'" cy="'+(v+Math.sin(a2)*s*.1)+'" r="'+(s*.025)+'" fill="#f0c0a0"/>';}
+  } else if(type==='tulip'){
+    // チューリップ：丸みのあるカップ形
+    o+='<line x1="'+h+'" y1="'+(v+s*.45)+'" x2="'+h+'" y2="'+(v+s*.05)+'" stroke="#6a9a50" stroke-width="'+(s*.06)+'" stroke-linecap="round"/>';
+    o+='<ellipse cx="'+(h-s*.15)+'" cy="'+(v+s*.25)+'" rx="'+(s*.08)+'" ry="'+(s*.18)+'" fill="#6a9a50" opacity=".7" transform="rotate(-30 '+(h-s*.15)+' '+(v+s*.25)+')"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.1)+'" rx="'+(s*.2)+'" ry="'+(s*.32)+'" fill="#e05070" opacity=".9"/>';
+    o+='<ellipse cx="'+(h-s*.18)+'" cy="'+(v-s*.05)+'" rx="'+(s*.14)+'" ry="'+(s*.3)+'" fill="#d04060" opacity=".85" transform="rotate(-12 '+(h-s*.18)+' '+(v-s*.05)+')"/>';
+    o+='<ellipse cx="'+(h+s*.18)+'" cy="'+(v-s*.05)+'" rx="'+(s*.14)+'" ry="'+(s*.3)+'" fill="#d04060" opacity=".85" transform="rotate(12 '+(h+s*.18)+' '+(v-s*.05)+')"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.12)+'" rx="'+(s*.08)+'" ry="'+(s*.18)+'" fill="#f0a0b0" opacity=".6"/>';
+  } else if(type==='sweetpea'){
+    // スイートピー：ひらひらした蝶のような花びら
+    o+='<line x1="'+h+'" y1="'+(v+s*.42)+'" x2="'+h+'" y2="'+(v-s*.1)+'" stroke="#8ab870" stroke-width="'+(s*.035)+'" stroke-linecap="round"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.22)+'" rx="'+(s*.28)+'" ry="'+(s*.2)+'" fill="#e0a8d8" opacity=".85"/>';
+    o+='<ellipse cx="'+(h-s*.15)+'" cy="'+(v-s*.05)+'" rx="'+(s*.2)+'" ry="'+(s*.28)+'" fill="#d088c8" opacity=".8" transform="rotate(-15 '+(h-s*.15)+' '+(v-s*.05)+')"/>';
+    o+='<ellipse cx="'+(h+s*.15)+'" cy="'+(v-s*.05)+'" rx="'+(s*.2)+'" ry="'+(s*.28)+'" fill="#d088c8" opacity=".8" transform="rotate(15 '+(h+s*.15)+' '+(v-s*.05)+')"/>';
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.28)+'" rx="'+(s*.12)+'" ry="'+(s*.16)+'" fill="#f0c0e8" opacity=".9"/>';
+  } else if(type==='peony'){
+    // 芍薬：ふんわり大きな球形花
+    [[s*.42,'#f0b0c0',12],[s*.3,'#e890a8',10],[s*.2,'#d87090',8],[s*.1,'#f0d0dc',6]].forEach(function(l){
+      for(var i=0;i<l[2];i++){var a=i/l[2]*Math.PI*2,px=h+Math.cos(a)*l[0]*.45,py=v+Math.sin(a)*l[0]*.45;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(l[0]*.4)+'" ry="'+(l[0]*.5)+'" fill="'+l[1]+'" opacity=".75" transform="rotate('+(i*(360/l[2]))+' '+h+' '+v+')"/>';}
+    });
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.08)+'" fill="#fce8ee"/>';
+  } else if(type==='iris'){
+    // アイリス：立ち上がる花びら
+    o+='<line x1="'+h+'" y1="'+(v+s*.45)+'" x2="'+h+'" y2="'+(v-s*.1)+'" stroke="#6a9060" stroke-width="'+(s*.05)+'" stroke-linecap="round"/>';
+    // 上の花びら3枚
+    [[-30,0],[0,-10],[30,0]].forEach(function(b){o+='<ellipse cx="'+h+'" cy="'+(v-s*.28)+'" rx="'+(s*.14)+'" ry="'+(s*.3)+'" fill="#7068c8" opacity=".85" transform="rotate('+b[0]+' '+h+' '+(v-s*.05)+')"/>';});
+    // 下に垂れる花びら3枚
+    [[-35,0],[0,5],[35,0]].forEach(function(b){o+='<ellipse cx="'+h+'" cy="'+(v+s*.1)+'" rx="'+(s*.14)+'" ry="'+(s*.28)+'" fill="#9088e0" opacity=".75" transform="rotate('+b[0]+' '+h+' '+v+')"/>';});
+    o+='<ellipse cx="'+h+'" cy="'+(v-s*.1)+'" rx="'+(s*.06)+'" ry="'+(s*.1)+'" fill="#f8f060" opacity=".9"/>';
+  } else if(type==='chrysanthemum'){
+    // 菊：細い花びらが放射状に
+    for(var i=0;i<24;i++){var a=i/24*Math.PI*2,px=h+Math.cos(a)*s*.3,py=v+Math.sin(a)*s*.3;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.07)+'" ry="'+(s*.22)+'" fill="#f8e840" opacity=".85" transform="rotate('+(i*15)+' '+h+' '+v+')"/>';}
+    for(var i=0;i<16;i++){var a=i/16*Math.PI*2,px=h+Math.cos(a)*s*.18,py=v+Math.sin(a)*s*.18;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.06)+'" ry="'+(s*.14)+'" fill="#f8d020" opacity=".9" transform="rotate('+(i*22.5)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.08)+'" fill="#e8c010"/>';
+  } else if(type==='narcissus'){
+    // 水仙：白い花びら＋黄色い副花冠
+    for(var i=0;i<6;i++){var a=i/6*Math.PI*2,px=h+Math.cos(a)*s*.28,py=v+Math.sin(a)*s*.28;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.13)+'" ry="'+(s*.24)+'" fill="#f8f8f0" opacity=".92" transform="rotate('+(i*60)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.15)+'" fill="#f8e840"/>';
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.1)+'" fill="#f0c820"/>';
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.05)+'" fill="#e0a810"/>';
+  } else if(type==='wax_flower'){
+    // 蝋梅：黄色い蝋のような小花
+    for(var i=0;i<6;i++){var a=i/6*Math.PI*2,px=h+Math.cos(a)*s*.28,py=v+Math.sin(a)*s*.28;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.12)+'" ry="'+(s*.18)+'" fill="#f0d840" opacity=".9" transform="rotate('+(i*60)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.12)+'" fill="#e0c020"/>';
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.06)+'" fill="#c8a010"/>';
+  } else if(type==='anemone'){
+    // アネモネ：黒い中心＋鮮やかな花びら
+    for(var i=0;i<6;i++){var a=i/6*Math.PI*2,px=h+Math.cos(a)*s*.3,py=v+Math.sin(a)*s*.3;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.16)+'" ry="'+(s*.26)+'" fill="#c050a0" opacity=".88" transform="rotate('+(i*60)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.18)+'" fill="#1a1a2e"/>';
+    for(var j=0;j<12;j++){var a2=j/12*Math.PI*2;o+='<circle cx="'+(h+Math.cos(a2)*s*.1)+'" cy="'+(v+Math.sin(a2)*s*.1)+'" r="'+(s*.028)+'" fill="#fff" opacity=".8"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.05)+'" fill="#2a2a3e"/>';
+  } else if(type==='lisianthus'){
+    // トルコキキョウ：ふんわり大輪
+    for(var i=0;i<6;i++){var a=i/6*Math.PI*2,px=h+Math.cos(a)*s*.32,py=v+Math.sin(a)*s*.32;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.22)+'" ry="'+(s*.3)+'" fill="#a878d0" opacity=".78" transform="rotate('+(i*60)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.14)+'" fill="#f0e8f8"/>';
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.06)+'" fill="#c0a0e0"/>';
+  } else if(type==='cyclamen'){
+    // シクラメン：反り返った花びら
+    for(var i=0;i<5;i++){var a=i/5*Math.PI*2-Math.PI/2,px=h+Math.cos(a)*s*.25,py=v+Math.sin(a)*s*.25;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.12)+'" ry="'+(s*.3)+'" fill="#e06080" opacity=".88" transform="rotate('+(i*72)+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.1)+'" fill="#8a4060"/>';
+  } else if(type==='hyacinth'){
+    // ヒヤシンス：小花が密集した穂状
+    o+='<line x1="'+h+'" y1="'+(v+s*.45)+'" x2="'+h+'" y2="'+(v-s*.38)+'" stroke="#7a9060" stroke-width="'+(s*.07)+'" stroke-linecap="round"/>';
+    var hp=[[-0.18,-0.32],[0.18,-0.28],[-0.2,-0.16],[0.2,-0.12],[-0.18,0],[0.18,0.04],[-0.16,0.16],[0.16,0.2],[-0.12,0.3],[0.12,0.34]];
+    hp.forEach(function(p){var px=h+p[0]*s,py=v+p[1]*s;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.1)+'" ry="'+(s*.13)+'" fill="#8090e0" opacity=".88"/><circle cx="'+px+'" cy="'+py+'" r="'+(s*.04)+'" fill="#f0f0ff" opacity=".9"/>';});
+  } else if(type==='gerbera'){
+    // ガーベラ：細い花びらが放射状に広がる明るい花
+    for(var i=0;i<20;i++){var a=i/20*Math.PI*2,px=h+Math.cos(a)*s*.32,py=v+Math.sin(a)*s*.32;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.08)+'" ry="'+(s*.24)+'" fill="#f06080" opacity=".88" transform="rotate('+(i*18)+' '+h+' '+v+')"/>';}
+    for(var i=0;i<14;i++){var a=i/14*Math.PI*2+0.1,px=h+Math.cos(a)*s*.18,py=v+Math.sin(a)*s*.18;o+='<ellipse cx="'+px+'" cy="'+py+'" rx="'+(s*.06)+'" ry="'+(s*.14)+'" fill="#e04060" opacity=".8" transform="rotate('+(i*(360/14))+' '+h+' '+v+')"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.12)+'" fill="#2a1a0a"/>';
+    for(var j=0;j<10;j++){var a2=j/10*Math.PI*2;o+='<circle cx="'+(h+Math.cos(a2)*s*.07)+'" cy="'+(v+Math.sin(a2)*s*.07)+'" r="'+(s*.025)+'" fill="#f0c040" opacity=".8"/>';}
+    o+='<circle cx="'+h+'" cy="'+v+'" r="'+(s*.04)+'" fill="#1a0a00"/>';
+  }
+  return o;
+}
+
+function defaultFlower(){
+  var o='';
+  ['0','60','120','180','240','300'].forEach(function(r){o+='<ellipse cx="80" cy="46" rx="12" ry="22" fill="#b5ceaf" opacity=".8" transform="rotate('+r+' 80 80)"/>';});
+  o+='<circle cx="80" cy="80" r="16" fill="#f0ebe0"/>';
+  o+='<text x="80" y="85" text-anchor="middle" font-size="13" fill="#8a9e8a" font-family="serif">？</text>';
+  return o;
+}
+
+// ========== 二十四節気データ ==========
+var sekki=[
+  {m:1,d:1, name:"小寒", icon:"❄️", flowers:"水仙・蝋梅・フリージア",
+   flowers_list:["narcissus","wax_flower"],
+   msg_season:"小寒から大寒へ。一年で最も寒いこの時期、凛とした空気の中にかすかな春の予感が宿っています。",
+   advice_season:"白い花を一輪、窓辺に飾ると、冬の光がやわらかく見えます。",
+   pretty_season:"冬にこそ花のある暮らしを。pretty flowerでは季節の旬花をご提案しています。"},
+  {m:1,d:20,name:"大寒", icon:"🌨️",flowers:"水仙・スノードロップ・チューリップ（球根）",
+   flowers_list:["narcissus","wax_flower"],
+   msg_season:"大寒の頃。冬の底にいるからこそ見える景色があります。じっと耐える芯の強さが、あなたの力です。",
+   advice_season:"寒い季節は花の持ちがよくなります。水仙の香りで部屋に春を先取りして。",
+   pretty_season:"凛と咲く冬の花は、pretty flowerのお気に入りの季節の一つ。ぜひのぞいてみてください。"},
+  {m:2,d:4, name:"立春", icon:"🌱", flowers:"ミモザ・スイートピー・チューリップ",
+   flowers_list:["mimosa","sweetpea","tulip"],
+   msg_season:"立春から雨水へ。暦の上では春。大地がそっと息を吹き返すこの頃、あなたの心にも新しい芽が出ています。",
+   advice_season:"ミモザの黄色は春の光そのもの。小さな枝一本でも、部屋の空気が変わります。",
+   pretty_season:"春一番の旬花たちが入荷する頃。pretty flowerでは立春の花をご用意しています。"},
+  {m:2,d:19,name:"雨水", icon:"🌧️",flowers:"ラナンキュラス・アネモネ・スイートピー",
+   flowers_list:["ranunculus","anemone","sweetpea"],
+   msg_season:"雨水の頃。雪がとけて雨になり、大地がうるおい始めます。やわらかなものが、静かに世界を変えていきます。",
+   advice_season:"春の花は色が豊か。ラナンキュラスを一輪、食卓に飾るだけで食事が華やぎます。",
+   pretty_season:"春の花が続々と並ぶ季節。pretty flowerのInstagramでも旬の花をご紹介中です。"},
+  {m:3,d:6, name:"啓蟄", icon:"🌿", flowers:"桜・菜の花・ムスカリ",
+   flowers_list:["sakura","sweetpea"],
+   msg_season:"啓蟄から春分へ。虫たちが土から目覚めるこの頃、自然の力強さがあなたの背中をそっと押してくれます。",
+   advice_season:"桜の一枝を花瓶に。春の訪れをいち早く部屋の中へ。",
+   pretty_season:"pretty flowerでは春らしいアレンジをご提案しています。旬の花と一緒に春を感じて。"},
+  {m:3,d:21,name:"春分", icon:"🌸", flowers:"桜・チューリップ・ストック",
+   flowers_list:["sakura","tulip","sweetpea"],
+   msg_season:"春分の頃。昼と夜の長さが等しくなり、季節がちょうど折り返します。バランスを整えることが、この時期の鍵です。",
+   advice_season:"春分の今日、大切な人に花を贈ってみませんか。言葉より先に気持ちが届きます。",
+   pretty_season:"お花でご挨拶を。pretty flowerでは贈り物のご相談もお受けしています。"},
+  {m:4,d:5, name:"清明", icon:"🌷", flowers:"チューリップ・スカビオサ・ライラック",
+   flowers_list:["tulip","scabiosa","sweetpea"],
+   msg_season:"清明の頃。万物が清らかに輝き、空気がいちばん澄んでいる季節です。今のあなたにも、その透明感が宿っています。",
+   advice_season:"チューリップは茎が曲がりやすいので、水を少なめにして涼しい場所に飾って。",
+   pretty_season:"春の花が一番充実する季節。pretty flowerで、お気に入りの花を見つけてください。"},
+  {m:4,d:20,name:"穀雨", icon:"🌦️",flowers:"ライラック・アイリス・芍薬",
+   flowers_list:["iris","peony","scabiosa"],
+   msg_season:"穀雨から立夏へ。春の雨が大地をうるおすこの頃、花の香りが雨とともにいっそう広がります。",
+   advice_season:"芍薬は蕾のうちに買って、ゆっくり開くのを楽しんで。日ごとに表情が変わります。",
+   pretty_season:"美しい春の花が揃う頃。pretty flowerで、季節の花と向き合ってみませんか。"},
+  {m:5,d:6, name:"立夏", icon:"☀️", flowers:"芍薬・バラ・スカビオサ",
+   flowers_list:["peony","rose","scabiosa"],
+   msg_season:"立夏の頃。夏の始まりを告げる風が吹き、緑がまぶしくなってきました。五感が開く季節です。",
+   advice_season:"白やグリーンの花を選ぶと、初夏の清々しさが室内にも広がります。",
+   pretty_season:"pretty flowerでは初夏の旬花を取り入れたアレンジをご提案しています。"},
+  {m:5,d:21,name:"小満", icon:"🌿", flowers:"バラ・クレマチス・ジャスミン",
+   flowers_list:["rose","peony"],
+   msg_season:"小満から芒種へ。草木が勢いよく育ちあふれるこの頃、あなたの中の何かも静かに満ちてきています。",
+   advice_season:"バラの香りは心を落ち着かせる力があります。香りのよい品種を一輪、寝室に。",
+   pretty_season:"バラが美しい季節。pretty flowerでは贈り物のアレンジも承っています。"},
+  {m:6,d:6, name:"芒種", icon:"🌧️",flowers:"あじさい・スカビオサ・ラナンキュラス",
+   flowers_list:["hydrangea","scabiosa","ranunculus"],
+   msg_season:"芒種から夏至へ。梅雨の季節に入るこの頃、しっとりとした空気の中に花の香りが満ちています。雨の日の花は格別です。",
+   advice_season:"あじさいは水揚げが命。切り花は斜めに切り直してたっぷりの水に。毎日替えるとより長持ち。",
+   pretty_season:"梅雨のお花を楽しみましょう。pretty flowerでは旬のあじさいを取り入れたアレンジをご提案しています。"},
+  {m:6,d:21,name:"夏至", icon:"🌞", flowers:"あじさい・ヒメヒマワリ・デルフィニウム",
+   flowers_list:["hydrangea","scabiosa"],
+   msg_season:"夏至から小暑へ。昼が最も長いこの頃、光があふれる季節の真っただ中にいます。長い一日を、花とともに丁寧に。",
+   advice_season:"涼しげな青や紫の花を選ぶと、夏至の長い一日が少し涼しく感じられます。",
+   pretty_season:"夏の色の花たちが揃う頃。pretty flowerのInstagramで旬花情報をチェックしてみてください。"},
+  {m:7,d:7, name:"小暑", icon:"🌻", flowers:"ひまわり・リモニウム・グラジオラス",
+   flowers_list:["sunflower","cosmos"],
+   msg_season:"小暑から大暑へ。梅雨が明け、本格的な夏の始まりです。太陽のように、今日も明るくまっすぐに。",
+   advice_season:"夏の花は水の管理が大切。朝早いうちに水を替え、涼しい場所に飾って長持ちさせて。",
+   pretty_season:"夏の花は元気をくれます。pretty flowerでは夏の旬花を取り入れたアレンジをどうぞ。"},
+  {m:7,d:23,name:"大暑", icon:"🔥", flowers:"ひまわり・トルコキキョウ・スターチス",
+   flowers_list:["sunflower","lisianthus"],
+   msg_season:"大暑の頃。一年でいちばん暑いこの時期、暑さを味方にして自分のエネルギーを使い切りましょう。",
+   advice_season:"トルコキキョウは夏の花の中でも特に長持ち。暑い季節の頼もしい存在です。",
+   pretty_season:"pretty flowerでは夏のお花も丁寧にセレクトしてお届けしています。"},
+  {m:8,d:7, name:"立秋", icon:"🍃", flowers:"ケイトウ・リンドウ・コスモス",
+   flowers_list:["cosmos","lisianthus","dahlia"],
+   msg_season:"立秋から処暑へ。暦の上では秋。朝晩に少しずつ涼しさを感じ始め、季節がそっと動き始めています。",
+   advice_season:"秋色の花をひとつ取り入れると、季節の変わり目を体で感じられます。",
+   pretty_season:"秋の花たちが少しずつ入荷する頃。pretty flowerで、秋一番の花と出会ってください。"},
+  {m:8,d:23,name:"処暑", icon:"🌾", flowers:"コスモス・リンドウ・ケイトウ",
+   flowers_list:["cosmos","dahlia"],
+   msg_season:"処暑の頃。暑さが和らぎ始め、ほっと一息つける時期です。花を飾って、季節の変わり目をゆっくり感じて。",
+   advice_season:"コスモスは長さを変えてバラバラに飾るほうが、野の花らしさが出ます。",
+   pretty_season:"秋の風情を花で楽しみましょう。pretty flowerでは季節の旬花をご提案しています。"},
+  {m:9,d:8, name:"白露", icon:"💧", flowers:"コスモス・ダリア・秋桜",
+   flowers_list:["cosmos","dahlia","chrysanthemum"],
+   msg_season:"白露から秋分へ。草に白い露が宿るこの頃、秋の空気が澄んでいきます。心も一緒に、すっきりと整う時期です。",
+   advice_season:"朝露のように繊細なコスモスは、シンプルな器に一輪が似合います。",
+   pretty_season:"秋の花が出揃う季節。pretty flowerでは、秋らしいアレンジをご用意しています。"},
+  {m:9,d:23,name:"秋分", icon:"🍁", flowers:"ダリア・菊・リンドウ",
+   flowers_list:["dahlia","chrysanthemum"],
+   msg_season:"秋分の頃。昼と夜が等しくなり、秋がちょうど折り返します。立ち止まって、自分を整えるのにいい時期です。",
+   advice_season:"深みのある色のダリアは、秋の光をいっそう美しく見せてくれます。",
+   pretty_season:"秋分の頃の花は、色が深く豊か。pretty flowerで秋の花を楽しんでみませんか。"},
+  {m:10,d:8, name:"寒露", icon:"🍂", flowers:"菊・ダリア・秋バラ",
+   flowers_list:["chrysanthemum","dahlia","rose"],
+   msg_season:"寒露から霜降へ。冷たい露が草に宿るこの頃、秋の香りがいっそう深まります。バラの香りも春より濃くなる季節です。",
+   advice_season:"秋バラは春より香りが深くなります。一輪を枕元に、眠る前に深呼吸を。",
+   pretty_season:"秋のバラを楽しむ季節。pretty flowerでは旬のバラも取り入れたアレンジをご提案しています。"},
+  {m:10,d:23,name:"霜降", icon:"🍁", flowers:"菊・コスモス・サフラン",
+   flowers_list:["chrysanthemum","cosmos","dahlia"],
+   msg_season:"霜降から立冬へ。霜が降り始めるこの頃、晩秋の花は凛として静かな力を持っています。",
+   advice_season:"菊は長持ちする花の代表。茎を短く切って低い器に飾ると、安定してきれいです。",
+   pretty_season:"晩秋の花の美しさを。pretty flowerで、この季節ならではの花を見つけてください。"},
+  {m:11,d:7, name:"立冬", icon:"❄️", flowers:"バラ・シクラメン・葉牡丹",
+   flowers_list:["rose","cyclamen"],
+   msg_season:"立冬の頃。冬の始まりを告げるこの時期、部屋に温かな花の色を取り込んで、寒さを迎え入れる準備を。",
+   advice_season:"冬に赤やオレンジの花を飾ると、視覚的な温もりで部屋が変わります。",
+   pretty_season:"冬の花のある暮らしを、pretty flowerと一緒に。旬の花でご提案します。"},
+  {m:11,d:22,name:"小雪", icon:"⛄", flowers:"シクラメン・ポインセチア・蝋梅",
+   flowers_list:["cyclamen","wax_flower","narcissus"],
+   msg_season:"小雪から大雪へ。雪がちらつき始めるこの頃、窓辺に花をひとつ置くだけで冬の景色がやわらかくなります。",
+   advice_season:"シクラメンは過湿と直射日光が苦手。明るい窓辺で、風通しよく管理して。",
+   pretty_season:"冬こそ花が映える季節。pretty flowerでは冬の旬花をセレクトしてお届けしています。"},
+  {m:12,d:7, name:"大雪", icon:"🌨️", flowers:"蝋梅・水仙・ポインセチア",
+   flowers_list:["wax_flower","narcissus"],
+   msg_season:"大雪から冬至へ。雪が積もり始めるこの頃、蝋梅の香りが冷えた空気の中でふっと温かく広がります。",
+   advice_season:"蝋梅は香りを楽しむ花。玄関に飾ると、帰宅するたびに甘い香りで迎えてくれます。",
+   pretty_season:"年末の贈り物に花を。pretty flowerでは冬のギフトアレンジも承っています。"},
+  {m:12,d:22,name:"冬至", icon:"🕯️", flowers:"水仙・ヒヤシンス・アマリリス",
+   flowers_list:["narcissus","hyacinth"],
+   msg_season:"冬至から小寒へ。夜がいちばん長いこの頃を越えれば、少しずつ光が戻ってきます。花を灯りのそばに飾って。",
+   advice_season:"ヒヤシンスの甘い香りは、長い冬の夜を温かく包んでくれます。球根ごと水栽培も素敵。",
+   pretty_season:"冬至の夜に花を。pretty flowerでは、暮れの季節に寄り添う花をご提案しています。"}
+];
+
+// ========== 花データ（運勢・固有メッセージ） ==========
+var flowers=[
+  {flower:"バラ",en:"Rose",type:"rose",luck:"大吉",cls:"daikichi",yearround:true,months:[1,2,3,4,5,6,7,8,9,10,11,12],
+   msg:"あなたの魅力が輝く日。自信を持って行動すれば、素敵な縁が引き寄せられます。",
+   advice:"バラを一輪、洗面台や枕元に飾ると毎日の始まりが変わります。",
+   pretty:"その季節にしか出会えない花があります。pretty flowerでは旬の花を大切に扱い、暮らしにそっと添えるご提案をしています。"},
+  {flower:"あじさい",en:"Hydrangea",type:"hydrangea",luck:"大吉",cls:"daikichi",
+   msg:"たくさんの縁が集まってくる日。人とのつながりを大切にして。",
+   advice:"あじさいは水をよく吸います。花瓶の水を毎日替えながら、丁寧に過ごす習慣を。",
+   pretty:"pretty flowerでは旬の季節のお花を取り入れたアレンジをご提案しています。北九州・戸畑のアトリエへ、お気軽にどうぞ。"},
+  {flower:"桜",en:"Cherry Blossom",type:"sakura",luck:"大吉",cls:"daikichi",
+   msg:"今日は何かが始まる予感がします。桜のように、思い切って咲いてみて。",
+   advice:"桜の枝は切り口をほぐしてから水に。温かい場所に置くと蕾が開きます。",
+   pretty:"春の旬花をお届けするpretty flower。桜の季節のアレンジもぜひご相談ください。"},
+  {flower:"芍薬",en:"Peony",type:"peony",luck:"大吉",cls:"daikichi",
+   msg:"豊かさと美しさを手に入れる日。ふんわりと大きく咲く芍薬のように、余裕を持って。",
+   advice:"芍薬は蕾で買って、ゆっくり開くのを楽しんで。日ごとに表情が変わります。",
+   pretty:"春の花の女王・芍薬の季節。pretty flowerで旬の芍薬と出会ってみませんか。"},
+  {flower:"チューリップ",en:"Tulip",type:"tulip",luck:"吉",cls:"kichi",months:[1,2,3],
+   msg:"素直な気持ちでいると、思いがけない喜びが訪れる日です。",
+   advice:"チューリップは茎が曲がりやすいので、水を少なめにして涼しい場所で。",
+   pretty:"春らしい花でお部屋を彩りませんか。pretty flowerでは旬のチューリップも取り入れています。"},
+  {flower:"スカビオサ",en:"Scabiosa",type:"scabiosa",luck:"吉",cls:"kichi",
+   msg:"繊細な花びらが風に揺れるように、今日は感じるままに過ごして。",
+   advice:"細い茎の花は、シンプルな一輪挿しに飾るだけで絵になります。余白を楽しんで。",
+   pretty:"pretty flowerでは季節ごとの旬の花を取り入れながら、日々のご提案をしています。"},
+  {flower:"ラナンキュラス",en:"Ranunculus",type:"ranunculus",luck:"吉",cls:"kichi",
+   msg:"重なる花びらのように、物事には深みがある日。丁寧に向き合って。",
+   advice:"ラナンキュラスは温度が上がると開き、下がると閉じます。夜は涼しい場所に移してあげて。",
+   pretty:"旬の花はその時期にしか見せない表情があります。pretty flowerで季節の花と出会ってみませんか。"},
+  {flower:"スイートピー",en:"Sweet Pea",type:"sweetpea",luck:"吉",cls:"kichi",months:[1,2,3],
+   msg:"やさしさと夢が広がる日。ひらひらと揺れる花びらのように、軽やかに。",
+   advice:"スイートピーは香りが魅力。玄関に飾ると、出かけるたびに幸せな気持ちになれます。",
+   pretty:"春の香り花・スイートピー。pretty flowerでは季節の旬花をご提案しています。"},
+  {flower:"アイリス",en:"Iris",type:"iris",luck:"吉",cls:"kichi",
+   msg:"個性と品格が輝く日。凛として美しいアイリスのように、自分らしく。",
+   advice:"アイリスは一本でも存在感があります。すっと背の高い花瓶に、スッキリと。",
+   pretty:"春から初夏の旬花・アイリス。pretty flowerでは季節のアレンジをご提案しています。"},
+  {flower:"アネモネ",en:"Anemone",type:"anemone",luck:"吉",cls:"kichi",
+   msg:"鮮やかな色が力をくれる日。ためらいを捨てて、飛び込んでみましょう。",
+   advice:"アネモネは光に向かって花が開きます。日当たりのよい場所に置いて変化を楽しんで。",
+   pretty:"春の旬花・アネモネ。pretty flowerで旬の花に出会ってみませんか。"},
+  {flower:"ミモザ",en:"Mimosa",type:"mimosa",luck:"中吉",cls:"chukichi",
+   msg:"明るさと温かさで周りを照らす日。あなたの笑顔が誰かの力になります。",
+   advice:"ミモザの黄色は部屋に光を連れてきます。小さな枝一本でも、春の空気が変わります。",
+   pretty:"pretty flowerのInstagramでは、季節の花の飾り方や暮らしのヒントを発信しています。ぜひのぞいてみてください。"},
+  {flower:"コスモス",en:"Cosmos",type:"cosmos",luck:"中吉",cls:"chukichi",
+   msg:"風に揺れるコスモスのように、柔軟に流れに乗ってみる日。",
+   advice:"コスモスは高さを変えてバラバラに飾るほうが、野の花らしさが出ます。",
+   pretty:"花のある暮らしをもっと身近に。pretty flowerのオンラインショップ（楽天・BASE）もご覧ください。"},
+  {flower:"ダリア",en:"Dahlia",type:"dahlia",luck:"中吉",cls:"chukichi",months:[3,4,8,9,10,11],
+   msg:"大きく咲くダリアのように、今日は一歩大きく踏み出す日です。",
+   advice:"ダリアは茎を斜めに切り、深水に1時間ほど漬けると長持ちします。",
+   pretty:"秋の花の主役・ダリア。pretty flowerでは秋ならではのアレンジをご提案しています。"},
+  {flower:"トルコキキョウ",en:"Lisianthus",type:"lisianthus",luck:"中吉",cls:"chukichi",yearround:true,
+   msg:"上品さと柔らかさが調和する日。どんな場面でも自然体でいられそう。",
+   advice:"トルコキキョウは暑さに強く、夏の花の中でも特に長持ちします。",
+   pretty:"通年楽しめる旬花・トルコキキョウ。pretty flowerでいつでもお気に入りの色を見つけてください。"},
+  {flower:"菊",en:"Chrysanthemum",type:"chrysanthemum",luck:"中吉",cls:"chukichi",yearround:true,months:[1,2,3,4,5,6,7,8,9,10,11,12],
+   msg:"凛とした美しさで、今日を丁寧に過ごして。積み重ねが形になる日です。",
+   advice:"菊は水の清潔さが大切。水を毎日替えて、茎の切り口を新鮮に保って。",
+   pretty:"和の花・菊を現代的に楽しむご提案も。pretty flowerにお任せください。"},
+  {flower:"ひまわり",en:"Sunflower",type:"sunflower",luck:"小吉",cls:"shokichi",months:[5,6,7,8,9],
+   msg:"太陽に向かって咲くように、前を向いて一歩踏み出す日。",
+   advice:"ひまわりは頭が重いので、短く切って低い器に飾ると長持ちします。",
+   pretty:"pretty flowerは26年間、花と向き合ってきたフローリストが一人でお届けする小さなアトリエです。"},
+  {flower:"水仙",en:"Narcissus",type:"narcissus",luck:"小吉",cls:"shokichi",
+   msg:"清楚で凛とした今日。自分の本質を大切にすることで、道が開けます。",
+   advice:"水仙は他の花の水揚げを妨げる成分が出ます。単独で飾るか、水をこまめに替えて。",
+   pretty:"冬の旬花・水仙。pretty flowerでは季節の花をご提案しています。"},
+  {flower:"蝋梅",en:"Wax Flower",type:"wax_flower",luck:"小吉",cls:"shokichi",
+   msg:"まだ寒くても、確かに光は少しずつ増しています。今日の小さな一歩を大切に。",
+   advice:"蝋梅は香りが命。玄関や廊下に飾ると、家全体に香りが広がります。",
+   pretty:"冬の香り花・蝋梅。pretty flowerでは冬ならではの旬花をご提案しています。"},
+  {flower:"シクラメン",en:"Cyclamen",type:"cyclamen",luck:"小吉",cls:"shokichi",
+   msg:"反り返った花びらが上を向くように、気持ちを上向きにする日です。",
+   advice:"シクラメンは葉の下に水を注ぐと長持ち。花や葉に水がかからないように。",
+   pretty:"冬の旬花・シクラメン。pretty flowerでは季節のお花をご提案しています。"},
+  {flower:"ガーベラ",en:"Gerbera",type:"gerbera",luck:"吉",cls:"kichi",yearround:true,
+   msg:"明るく元気な花が今日のあなたを後押しします。笑顔でいることが一番の開運。",
+   advice:"ガーベラは茎が柔らかく曲がりやすいので、短めに切って低い器に。水は少なめがコツ。",
+   pretty:"カラフルなガーベラはギフトにも人気。pretty flowerでは旬の花と合わせたアレンジもご提案しています。"},
+  {flower:"ユーカリ",en:"Eucalyptus",type:"eucalyptus",luck:"末吉",cls:"suekichi",yearround:true,
+   msg:"余計なものを手放すと、本当に大切なものが見えてくる日。",
+   advice:"グリーンを一枝飾るだけで、空間がぐっと落ち着きます。花のない日もグリーンと暮らして。",
+   pretty:"旬のグリーンや季節の花を使ったアレンジ。pretty flowerにお任せいただけます。"},
+  {flower:"スズラン",en:"Lily of the Valley",type:"lily",luck:"末吉",cls:"suekichi",
+   msg:"小さくても確かな幸せが集まる日。身近なことに気づく目を持って。",
+   advice:"スズランは香りが強く、玄関に一輪飾るだけで空間が変わります。花言葉は「幸福の再来」。",
+   pretty:"花言葉には気持ちを伝える力があります。pretty flowerでは贈り物のご相談もお受けしています。"},
+  {flower:"ヒヤシンス",en:"Hyacinth",type:"hyacinth",luck:"末吉",cls:"suekichi",
+   msg:"今は力を蓄えるとき。ヒヤシンスが球根から力強く咲くように、準備が実を結びます。",
+   advice:"ヒヤシンスの球根は水栽培もできます。根が伸びていく様子を観察するのも楽しいですよ。",
+   pretty:"冬から春へ。pretty flowerでは季節をまたぐ花もご提案しています。"}
+];
+
+// ========== 節気取得 ==========
+function getSekki(){
+  var d=new Date(),m=d.getMonth()+1,day=d.getDate(),cur=sekki[0];
+  for(var i=0;i<sekki.length;i++){if(m>sekki[i].m||(m===sekki[i].m&&day>=sekki[i].d))cur=sekki[i];}
+  return cur;
+}
+
+// ========== 季節重み付き抽選 ==========
+function weightedPick(sk){
+  // 節気リストの花 + 通年花のみに絞る
+  var pool=flowers.filter(function(f){
+    return f.yearround || sk.flowers_list.indexOf(f.type)>=0;
+  });
+  // 節気リストの花は2倍出やすく
+  var w=pool.map(function(f){return sk.flowers_list.indexOf(f.type)>=0?2:1;});
+  var t=w.reduce(function(a,b){return a+b;},0),r=Math.random()*t,acc=0;
+  for(var i=0;i<pool.length;i++){acc+=w[i];if(r<acc)return pool[i];}
+  return pool[0];
+}
+
+// ========== 描画・インタラクション ==========
+var drawn=false,cur=null,curSekki=null;
+
+document.getElementById('flowerG').innerHTML=defaultFlower();
+
+function draw(){
+  if(drawn)return;
+  var stage=document.getElementById('flowerStage');
+  var svg=document.getElementById('mainSvg');
+  stage.classList.remove('idle');
+  svg.style.transition='transform 0.15s ease';
+  svg.style.transform='scale(0.65)';
+  setTimeout(function(){
+    var sk=getSekki();
+    cur=weightedPick(sk);
+    curSekki=sk;
+    document.getElementById('flowerG').innerHTML=flowerSVG(cur.type,80,80,58);
+    svg.style.transform='';svg.style.transition='';
+    stage.classList.add('blooming');
+    setTimeout(function(){
+      document.getElementById('hint').style.display='none';
+      document.getElementById('rSvgSmall').innerHTML=flowerSVG(cur.type,22,22,18);
+      document.getElementById('rFlower').textContent=cur.flower;
+      document.getElementById('rEn').textContent=cur.en;
+      var b=document.getElementById('rBadge');
+      b.textContent=cur.luck;b.className='luck-badge '+cur.cls;
+      // 節気のメッセージ＋花固有アドバイス
+      document.getElementById('rMsg').textContent=sk.msg_season+' '+cur.msg;
+      document.getElementById('rAdvice').textContent=cur.advice+' '+sk.advice_season;
+      document.getElementById('rPretty').textContent=sk.pretty_season;
+      document.getElementById('giftCard').style.display=cur.cls==='daikichi'?'block':'none';
+      document.getElementById('result').className='result show';
+      drawn=true;
+    },520);
+  },150);
+}
+
+function reset(){
+  drawn=false;cur=null;
+  var stage=document.getElementById('flowerStage');
+  stage.classList.remove('blooming');stage.classList.add('idle');
+  document.getElementById('flowerG').innerHTML=defaultFlower();
+  document.getElementById('hint').style.display='block';
+  document.getElementById('result').className='result';
+  document.getElementById('giftCard').style.display='none';
+}
+
+function copyResult(){
+  if(!cur||!curSekki)return;
+  var d=new Date();
+  var txt='🌿 今日の花おみくじ\n'+d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+curSekki.name+'の頃）\n\nお花：'+cur.flower+'\n運勢：'+cur.luck+'\n\n'+curSekki.msg_season+'\n'+cur.msg+'\n\n'+cur.advice+'\n\n✦ pretty flower ✦\nhttps://pretty-flower.github.io/shop/';
+  navigator.clipboard.writeText(txt).then(function(){
+    var b=document.getElementById('copyBtn');
+    b.textContent='コピーしました ✓';
+    setTimeout(function(){b.textContent='結果をコピー';},2000);
+  });
+}
+
+// ========== 初期化 ==========
+var d=new Date(),s=getSekki();
+document.getElementById('dateStr').textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
+document.getElementById('sekkiIcon').textContent=s.icon;
+document.getElementById('sekkiName').textContent=s.name;
+document.getElementById('sekkiFlowers').textContent='旬の花：'+s.flowers;
+</script>
+</body>
+</html>
